@@ -64,9 +64,8 @@ f = phenoData("test/")
 
 c = plot_manager()
 
-c.addPlot(violin,((2,2,3,2,4,6,2),(1,2,2,2,1,1,1)),211)
-c.addPlot(violin,((1,2,2,2,1,1,1),(2,2,3,2,4,6,2)),212)
+c.addPlot(violin,f.extractData(0,0,["Gender","AgeDxYrs"],0),111)
+#c.addPlot(violin,((1,2,2,2,1,1,1),(2,2,3,2,4,6,2)),212)
 c.drawPlots()
 
-f.extractData(0,0,["MuiseLabID","FamilyStatus"],0)
 print(f)
