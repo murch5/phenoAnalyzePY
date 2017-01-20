@@ -16,6 +16,7 @@ import os as os
 
 from plot_manager import plot_manager
 from violin import violin
+from pie import pie
 
 def loadCSVtoPandas(fileName):
     dataFrame = pd.read_csv(fileName, sep=",")
@@ -64,8 +65,9 @@ f = phenoData("test/")
 
 c = plot_manager()
 
-c.addPlot(violin,f.extractData(0,0,["Gender","AgeDxYrs"],0),111)
-#c.addPlot(violin,((1,2,2,2,1,1,1),(2,2,3,2,4,6,2)),212)
+c.addPlot(violin,f.extractData(0,0,["Gender","AgeDxYrs"],0),211)
+c.addPlot(pie,(20,50,30),223)
+c.addPlot(pie,(1,2,2,2,1,1,1),224)
 c.drawPlots()
 
 print(f)
