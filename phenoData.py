@@ -14,6 +14,7 @@ import os as os
 from plot_manager import plot_manager
 from violin import violin
 from pie import pie
+from scatter import scatter
 
 
 def loadCSVtoPandas(fileName):
@@ -25,7 +26,7 @@ def loadCSVtoPandas(fileName):
 class phenoData():
     def getFilesFromDir(self):
         files = glob.glob(os.path.join(self.directory, "*.csv"))
-        print(files)
+
         return files
 
     def __init__(self, directory):
@@ -51,10 +52,10 @@ class phenoData():
         for i in self.fileNames:
             data = loadCSVtoPandas(i)
             dataSet.append(data)
-            print(dataSet)
+
         return dataSet
 
-    def extractData(self, dataSet, selection, columns, groupBy):
+    def extractData(self, dataSet, selection, columns, groupBy=0):
 
         slicedData = self.data[dataSet]
         slicedData = slicedData[columns]
@@ -64,11 +65,12 @@ class phenoData():
 f = phenoData("test/")
 
 c = plot_manager("test1")
-
-c.addPlot(violin, f.extractData(0, 0, ["Gender", "AgeDxYrs"], 0), 211)
+c.setStyleSheet("seaborn-muted")
+#c.addPlot(violin, f.extractData(0, 0, ["AffStatus", "AgeDxYrs",], 0), 211)
+c.addPlot(scatter, f.extractData(0, 0, ["AgeDxYrs", "AgeDxYrs",], 0), 221)
 c.addPlot(pie, (20, 50, 30), 223)
 c.addPlot(pie, (1, 2, 2, 2, 1, 1, 1), 224)
 c.drawPlots()
-c.captureImage("PNG")
+c.captureImage("")
 
 print(f)
