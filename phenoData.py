@@ -5,9 +5,6 @@ print(sys.path)
 if not PATH in sys.path:
     sys.path.append(PATH)
 
-
-
-
 #Phenotype data loading and manipulation class object
 
 import pandas as pd
@@ -63,11 +60,12 @@ class phenoData():
 
 f = phenoData("test/")
 
-c = plot_manager()
+c = plot_manager("test1")
 
 c.addPlot(violin,f.extractData(0,0,["Gender","AgeDxYrs"],0),211)
 c.addPlot(pie,(20,50,30),223)
 c.addPlot(pie,(1,2,2,2,1,1,1),224)
 c.drawPlots()
+c.captureImage("PNG")
 
 print(f)
