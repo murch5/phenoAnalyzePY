@@ -1,5 +1,6 @@
 PATH = '/Users/Ryan/PycharmProjects/plot_managerPY'
 import sys
+import csv
 
 print(sys.path)
 if not PATH in sys.path:
@@ -11,7 +12,7 @@ import pandas as pd
 import glob as glob
 import os as os
 
-from plot_manager import plot_manager
+import plot_manager as plot_manager
 from violin import violin
 from pie import pie
 from scatter import scatter
@@ -24,17 +25,24 @@ def loadCSVtoPandas(fileName):
 
 
 class phenoData():
-    def getFilesFromDir(self):
-        files = glob.glob(os.path.join(self.directory, "*.csv"))
+    def getFilesFromDir(self, directory, ext):
+        files = glob.glob(os.path.join(directory, ext))
 
         return files
 
     def __init__(self, directory):
         self.directory = directory  # directory containing the phenoData to load
-        self.fileNames = self.getFilesFromDir()
+        self.fileNames = self.getFilesFromDir(self.directory, "*.csv")
         self.data = self.loadData()
         self.dfNames = self.getNames()
+
+        # View specific variables
+        self.viewSetRaw = []
+        self.viewSet = []
         self.plotManagers = []
+        self.viewNames = []
+
+        self.currView = 0
         self.totalView = 0
 
         return
@@ -47,6 +55,87 @@ class phenoData():
             names.append(t[1][:-4])
         return names
 
+    def loadViewSets(self, dir):
+
+        viewFile = self.getFilesFromDir(dir, "*.viewSet")
+
+        for i in viewFile:
+            with open(i, 'r') as csvfile:
+                viewSetFile = csv.reader(csvfile, delimiter=",")
+                for row in viewSetFile:
+                    self.viewSetRaw.append(row)
+
+        return
+
+    def arrayCheck(self, entry):
+        if ";" in entry:
+            entry = entry.split(";")
+
+        return entry
+
+    def parseRawViewData(self):
+
+        viewIndices = []
+        line = -1
+
+        for q in self.viewSetRaw:
+            line += 1
+            if q[0][0] == ">":
+                viewIndices.append(line)
+
+        numViews = len(viewIndices)
+
+        viewIndices.append(len(self.viewSetRaw))
+
+        for i in range(0, numViews):
+            title = self.viewSetRaw[viewIndices[i]][0][1:]
+            self.viewNames.append(title)
+            entryList = []
+            for q in range(viewIndices[i] + 1, (viewIndices[i + 1])):
+                temp = [self.arrayCheck(self.viewSetRaw[q][0]), self.arrayCheck(self.viewSetRaw[q][1]),
+                        self.arrayCheck(self.viewSetRaw[q][2]), self.arrayCheck(self.viewSetRaw[q][3]),
+                        self.arrayCheck(self.viewSetRaw[q][4]), self.arrayCheck(self.viewSetRaw[q][5]),
+                        self.viewSetRaw[q][6:]]
+                entry = pd.Series(temp, name=self.viewSetRaw[q][0],
+                                  index=["title", "position", "plotType", "dataSet", "data", "func", "argvs"])
+                entryList.append(entry)
+
+            view = pd.DataFrame(entryList)
+            self.viewSet.append(view)
+
+        return
+
+    def parseView(self):
+
+        viewIndex = -1
+
+        for x in self.viewSet:
+
+            viewIndex += 1
+            newplot = plot_manager.plot_manager(self.viewNames[viewIndex])
+
+            for index, row in x.iterrows():
+                dataTemp = self.extractData(row[3], row[4], 0, 0, 0)
+
+                newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], dataTemp)
+
+            self.plotManagers.append(newplot)
+
+        return
+
+    def setView(self, view):
+        self.currView = view
+        return
+
+    def displayAllViews(self):
+
+        for plots in self.plotManagers:
+            plots.drawPlots()
+
+        self.plotManagers[0].showPlot()
+
+        return
+
     def loadData(self):
 
         dataSet = []
@@ -56,70 +145,30 @@ class phenoData():
 
         return dataSet
 
-    def extractData(self, dataSet, columns, filters=[], groupBySum=[], sizeFilter=[]):
+    def extractData(self, dataSet, subset, filters=[], groupBy=[], func=[]):
 
-        slicedData = self.data[dataSet]
+        slicedData = self.data[int(dataSet)]
 
         if filters != 0:
             for i in filters:
                 # slicedData = slicedData.where(i)
                 slicedData = slicedData.query(i)
 
-        df = slicedData[columns]
+        df = slicedData[subset]
 
-        if groupBySum != 0:
-            r = slicedData.groupby(groupBySum).size()
+        if groupBy != 0:
+            r = slicedData.groupby(groupBy).size()
             df = r
             print(df)
             print(type(df))
-            if sizeFilter!=0:
-                for i in sizeFilter:
-                    df = df[eval(i)]
-
 
         return df
 
 
-
-
 f = phenoData("test/")
 
-c = plot_manager("Classification by Dx")
-d = plot_manager("Age by Severity")
-e = plot_manager("Summary of EIM")
-g = plot_manager("Summary of Co-morbidities")
-e.setStyleSheet("seaborn-muted")
-c.setStyleSheet("seaborn-muted")
-d.setStyleSheet("seaborn-muted")
-
-
-c.addPlot(violin, f.extractData(2, ["InitDx_Categorized", "AgeDxYrs", "Gender_Categorized"],
-                                ["Gender_Categorized==\"Male\" | Gender_Categorized==\"Female\"",
-                                 "InitDx_Categorized!=\"Await Dx\" & InitDx_Categorized!=\"Atypical CD\" "], 0), 311)
-c.addPlot(violin, f.extractData(2, ["InitDx_Categorized", "aggregateMean_ByID", "Gender_Categorized"],
-                               ["Gender_Categorized==\"Male\" | Gender_Categorized==\"Female\"",
-                                "InitDx_Categorized!=\"Await Dx\" & InitDx_Categorized!=\"Atypical CD\" "], 0), 312)
-c.addPlot(pie, f.extractData(2, ["InitDx_Categorized"], 0, groupBySum=["InitDx_Categorized"],sizeFilter=["df>2"]), 325, title="Initial Dx")
-c.addPlot(pie, f.extractData(2, ["AffStatus"], 0, groupBySum=["AffStatus"],sizeFilter=["df>200"]), 326,title="Affection Status")
-
-e.addPlot(pie, f.extractData(2, ["Data"], 0, groupBySum=["Data"],sizeFilter=["df>5"]),111,title="Autoimmune")
-g.addPlot(pie, f.extractData(2, ["EIM"], 0, groupBySum=["EIM"],sizeFilter=["df>5"]),111,title="EIM")
-
-
-# d.addView("Gender Type")
-d.addPlot(scatter, f.extractData(2, ["AgeDxYrs","aggregateMean_ByID"],["AffStatus==2"],0), 111,title="Weights = 1.0")
-# c.addPlot(pie, (20, 50, 30), 223)
-# c.addPlot(pie, (1, 2, 2, 2, 1, 1, 1), 224)
-# c.setView(0)
-# d.setView(0)
-#c.drawPlots()
-c.drawPlots()
-d.drawPlots()
-e.drawPlots()
-g.drawPlots()
-# d.drawPlots()
-d.showPlot()
-
-# c.captureImage("")
-
-print(f)
+f.loadViewSets("view/")
+f.parseRawViewData()
+f.parseView()
+f.setView(0)
+f.displayAllViews()
