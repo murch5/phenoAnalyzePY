@@ -24,7 +24,7 @@ def loadCSVtoPandas(fileName):
     return dataFrame
 
 
-class phenoData():
+class phenoData:
     def getFilesFromDir(self, directory, ext):
         files = glob.glob(os.path.join(directory, ext))
 
@@ -95,9 +95,9 @@ class phenoData():
                 temp = [self.arrayCheck(self.viewSetRaw[q][0]), self.arrayCheck(self.viewSetRaw[q][1]),
                         self.arrayCheck(self.viewSetRaw[q][2]), self.arrayCheck(self.viewSetRaw[q][3]),
                         self.arrayCheck(self.viewSetRaw[q][4]), self.arrayCheck(self.viewSetRaw[q][5]),
-                        self.viewSetRaw[q][6:]]
+                        self.arrayCheck(self.viewSetRaw[q][6]), self.arrayCheck(self.viewSetRaw[q][7])]
                 entry = pd.Series(temp, name=self.viewSetRaw[q][0],
-                                  index=["title", "position", "plotType", "dataSet", "data", "func", "argvs"])
+                                  index=["title", "position", "plotType", "dataSet", "data", "func", "dataArgs","plotArgs"])
                 entryList.append(entry)
 
             view = pd.DataFrame(entryList)
@@ -115,7 +115,7 @@ class phenoData():
             newplot = plot_manager.plot_manager(self.viewNames[viewIndex])
 
             for index, row in x.iterrows():
-                dataTemp = self.extractData(row[3], row[4], 0, 0, 0)
+                dataTemp = self.extractData(row[3], row[4],row[6])
 
                 newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], dataTemp)
 
@@ -145,22 +145,62 @@ class phenoData():
 
         return dataSet
 
-    def extractData(self, dataSet, subset, filters=[], groupBy=[], func=[]):
+    def filterByVal(self, data, arg):
+
+        newdata = data
+        for x in arg:
+            newdata = newdata.query(x)
+        return newdata
+
+    def groupby(self,data,arg):
+
+        newdata = data
+
+        newdata = newdata.groupby(by=arg).size()
+        print(newdata)
+        return newdata
+
+    def groupbyval(self,data,arg):
+
+
+        newdata = data
+        newdata = newdata.groupby(newdata).size()
+        print(newdata)
+        return newdata
+
+    def filterByID(self):
+        return
+
+    dataFunc = {"filterByVal": filterByVal,"groupBy":groupby,"groupByVal":groupbyval}
+
+    def parseArgs(self,args):
+        argList = []
+        if args.any():
+            for i in args:
+                q = i.split("=",1)
+                argList.append(q)
+
+        return argList
+
+    def evaluateArg(self,data,arg):
+        temp = data
+        argList = arg[1].split("~")
+        temp = phenoData.dataFunc[arg[0]](self,temp,argList)
+
+        return temp
+
+    def extractData(self, dataSet, subset, args):
+
+        pdArg = pd.Series(args)
+        f = self.parseArgs(pdArg)
 
         slicedData = self.data[int(dataSet)]
 
-        if filters != 0:
-            for i in filters:
-                # slicedData = slicedData.where(i)
-                slicedData = slicedData.query(i)
-
         df = slicedData[subset]
 
-        if groupBy != 0:
-            r = slicedData.groupby(groupBy).size()
-            df = r
-            print(df)
-            print(type(df))
+        for x in f:
+            if x != ["0"]:
+                df = self.evaluateArg(df,x)
 
         return df
 
