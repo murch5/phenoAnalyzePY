@@ -55,6 +55,11 @@ class phenoData:
             names.append(t[1][:-4])
         return names
 
+    def getDFIndexFromName(self, name):
+
+        index = self.dfNames.index(name)
+        return index
+
     def loadViewSets(self, dir):
 
         viewFile = self.getFilesFromDir(dir, "*.viewSet")
@@ -97,7 +102,8 @@ class phenoData:
                         self.arrayCheck(self.viewSetRaw[q][4]), self.arrayCheck(self.viewSetRaw[q][5]),
                         self.arrayCheck(self.viewSetRaw[q][6]), self.arrayCheck(self.viewSetRaw[q][7])]
                 entry = pd.Series(temp, name=self.viewSetRaw[q][0],
-                                  index=["title", "position", "plotType", "dataSet", "data", "func", "dataArgs","plotArgs"])
+                                  index=["title", "position", "plotType", "dataSet", "data", "func", "dataArgs",
+                                         "plotArgs"])
                 entryList.append(entry)
 
             view = pd.DataFrame(entryList)
@@ -115,7 +121,7 @@ class phenoData:
             newplot = plot_manager.plot_manager(self.viewNames[viewIndex])
 
             for index, row in x.iterrows():
-                dataTemp = self.extractData(row[3], row[4],row[6])
+                dataTemp = self.extractData(row[3], row[4], row[6])
 
                 newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], dataTemp)
 
@@ -147,12 +153,13 @@ class phenoData:
 
     def filterByVal(self, data, arg):
 
-        newdata = data
+        newdata = pd.DataFrame(data)
+
         for x in arg:
             newdata = newdata.query(x)
         return newdata
 
-    def groupby(self,data,arg):
+    def groupby(self, data, arg):
 
         newdata = data
 
@@ -160,32 +167,37 @@ class phenoData:
         print(newdata)
         return newdata
 
-    def groupbyval(self,data,arg):
-
+    def groupbyval(self, data, arg):
 
         newdata = data
+        print(arg)
+        if arg[0]=="Delim":
+            newDatasplit = newdata.str.split(";").apply(pd.Series,1).stack()
+
+            newdata = newDatasplit
+
         newdata = newdata.groupby(newdata).size()
-        print(newdata)
+
         return newdata
 
     def filterByID(self):
         return
 
-    dataFunc = {"filterByVal": filterByVal,"groupBy":groupby,"groupByVal":groupbyval}
+    dataFunc = {"filterByVal": filterByVal, "groupBy": groupby, "groupByVal": groupbyval}
 
-    def parseArgs(self,args):
+    def parseArgs(self, args):
         argList = []
         if args.any():
             for i in args:
-                q = i.split("=",1)
+                q = i.split("=", 1)
                 argList.append(q)
 
         return argList
 
-    def evaluateArg(self,data,arg):
+    def evaluateArg(self, data, arg):
         temp = data
         argList = arg[1].split("~")
-        temp = phenoData.dataFunc[arg[0]](self,temp,argList)
+        temp = phenoData.dataFunc[arg[0]](self, temp, argList)
 
         return temp
 
@@ -194,14 +206,15 @@ class phenoData:
         pdArg = pd.Series(args)
         f = self.parseArgs(pdArg)
 
+       # slicedData = self.data[int(dataSet)]
 
-        slicedData = self.data[int(dataSet)]
+        slicedData = self.data[self.getDFIndexFromName(dataSet)]
 
         df = slicedData[subset]
 
         for x in f:
             if x != ["0"]:
-                df = self.evaluateArg(df,x)
+                df = self.evaluateArg(df, x)
 
         return df
 
