@@ -2,7 +2,7 @@ PATH = '/Users/Ryan/PycharmProjects/plot_managerPY'
 import sys
 import csv
 
-print(sys.path)
+
 if not PATH in sys.path:
     sys.path.append(PATH)
 
@@ -123,7 +123,7 @@ class phenoData:
             for index, row in x.iterrows():
                 dataTemp = self.extractData(row[3], row[4], row[6])
 
-                newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], dataTemp)
+                newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], dataTemp, row[7])
 
             self.plotManagers.append(newplot)
 
@@ -151,39 +151,63 @@ class phenoData:
 
         return dataSet
 
+    sortType = {"ascend":True,"descend":False}
+
+    def sort(self, data, arg):
+
+        newdata = pd.DataFrame(data)
+        direction = arg[0]
+        newdata.sort_values(by=0,ascending=phenoData.sortType[direction],inplace=True)
+        return newdata
+
+    def sortIndex(self, data, arg):
+
+        newdata = pd.DataFrame(data)
+        direction = arg[0]
+        newdata.sort_index(ascending=phenoData.sortType[direction],inplace=True)
+        return newdata
+
+
     def filterByVal(self, data, arg):
 
         newdata = pd.DataFrame(data)
 
         for x in arg:
             newdata = newdata.query(x)
+
+        newdata.reset_index(drop=True,inplace=True)
+
         return newdata
 
     def groupby(self, data, arg):
 
-        newdata = data
+        newdata = data[:]
 
         newdata = newdata.groupby(by=arg).size()
-        print(newdata)
+
         return newdata
 
     def groupbyval(self, data, arg):
 
-        newdata = data
-        print(arg)
-        if arg[0]=="Delim":
-            newDatasplit = newdata.str.split(";").apply(pd.Series,1).stack()
+        newdata = data[:]
+
+        if "inclNA" in arg:
+            newdata.fillna("n/a", inplace=True)
+
+        if "Delim" in arg:
+            newDatasplit = newdata.str.split(";").apply(pd.Series, 1).stack()
 
             newdata = newDatasplit
 
         newdata = newdata.groupby(newdata).size()
+        newdata.columns = ["Index", "GroupedCounts"]
 
         return newdata
 
     def filterByID(self):
         return
 
-    dataFunc = {"filterByVal": filterByVal, "groupBy": groupby, "groupByVal": groupbyval}
+    dataFunc = {"filterByVal": filterByVal, "groupBy": groupby, "groupByVal": groupbyval, "sort":sort, "sortIndex":sortIndex}
 
     def parseArgs(self, args):
         argList = []
@@ -206,7 +230,7 @@ class phenoData:
         pdArg = pd.Series(args)
         f = self.parseArgs(pdArg)
 
-       # slicedData = self.data[int(dataSet)]
+        # slicedData = self.data[int(dataSet)]
 
         slicedData = self.data[self.getDFIndexFromName(dataSet)]
 
