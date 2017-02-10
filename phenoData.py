@@ -26,6 +26,12 @@ def loadCSVtoPandas(fileName):
 
 class phenoData:
     def getFilesFromDir(self, directory, ext):
+
+        directory = glob.glob("data/*/")
+        print(directory)
+
+        for y in directory:
+
         files = glob.glob(os.path.join(directory, ext))
 
         return files
