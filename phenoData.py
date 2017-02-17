@@ -1,6 +1,9 @@
 PATH = '/Users/Ryan/PycharmProjects/plot_managerPY'
 import sys
 import csv
+import generateFrameSet as gfs
+import processingFunc as process
+
 
 
 if not PATH in sys.path:
@@ -18,26 +21,31 @@ from pie import pie
 from scatter import scatter
 
 
-def loadCSVtoPandas(fileName):
-    dataFrame = pd.read_csv(fileName, sep=",")
-
-    return dataFrame
 
 
 class phenoData:
     def getFilesFromDir(self, directory, ext):
 
-        directory = glob.glob("data/*/")
-        print(directory)
+        fileName = []
+        self.dataDir = glob.glob("data/*/")
 
-        for y in directory:
+        for y in self.dataDir:
+            dirFiles = glob.glob(os.path.join(y, "*"))
+            self.dataDirNames.append(y)
+            fileName.append(dirFiles)
 
-        files = glob.glob(os.path.join(directory, ext))
+        return fileName
 
-        return files
+    def getViewsFromDir(self,directory):
+
+        dirFiles = glob.glob(os.path.join(directory, "*.viewSet"))
+
+        return dirFiles
 
     def __init__(self, directory):
         self.directory = directory  # directory containing the phenoData to load
+        self.dataDir = []
+        self.dataDirNames = []
         self.fileNames = self.getFilesFromDir(self.directory, "*.csv")
         self.data = self.loadData()
         self.dfNames = self.getNames()
@@ -56,9 +64,14 @@ class phenoData:
     def getNames(self):
 
         names = []
+
         for q in self.fileNames:
-            t = os.path.split(q)
-            names.append(t[1][:-4])
+            for x in q:
+                r = os.path.basename(x)
+                t = os.path.splitext(r)
+
+                names.append(t[0])
+
         return names
 
     def getDFIndexFromName(self, name):
@@ -68,7 +81,7 @@ class phenoData:
 
     def loadViewSets(self, dir):
 
-        viewFile = self.getFilesFromDir(dir, "*.viewSet")
+        viewFile = self.getViewsFromDir(dir)
 
         for i in viewFile:
             with open(i, 'r') as csvfile:
@@ -129,7 +142,9 @@ class phenoData:
             for index, row in x.iterrows():
                 dataTemp = self.extractData(row[3], row[4], row[6])
 
-                newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], dataTemp, row[7])
+                processTemp = self.processData(dataTemp,row[5])
+
+                newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], processTemp, row[7])
 
             self.plotManagers.append(newplot)
 
@@ -148,12 +163,36 @@ class phenoData:
 
         return
 
+    def loadCSV(self,fileName):
+
+        dataFrame = pd.read_csv(fileName, sep=",")
+
+        return dataFrame
+
+    def loadTIF(self, fileName):
+
+        data = gfs.loadTIF(fileName)
+
+        return data
+
+    def loadDir(self,directory):
+
+        files = glob.glob(os.path.join(directory, "*.*"))
+
+        data = gfs.generateFrameSet(files)
+
+        return data
+
+    fileTypes = {"csv": loadCSV, "tif": loadTIF, "": loadDir}
+
     def loadData(self):
 
         dataSet = []
         for i in self.fileNames:
-            data = loadCSVtoPandas(i)
-            dataSet.append(data)
+            for q in i:
+                extension = os.path.splitext(q)[1][1:]
+                data = phenoData.fileTypes[extension](self,q)
+                dataSet.append(data)
 
         return dataSet
 
@@ -172,7 +211,6 @@ class phenoData:
         direction = arg[0]
         newdata.sort_index(ascending=phenoData.sortType[direction],inplace=True)
         return newdata
-
 
     def filterByVal(self, data, arg):
 
@@ -214,6 +252,7 @@ class phenoData:
         return
 
     dataFunc = {"filterByVal": filterByVal, "groupBy": groupby, "groupByVal": groupbyval, "sort":sort, "sortIndex":sortIndex}
+    processFunc = {"gaussian": process.gaussian, "variance": process.variance, "stddev": process.stddev}
 
     def parseArgs(self, args):
         argList = []
@@ -231,6 +270,13 @@ class phenoData:
 
         return temp
 
+    def evaluateProcess(self, data, arg):
+        temp = data
+        argList = arg[1].split("~")
+        temp = phenoData.processFunc[arg[0]](temp, argList)
+
+        return temp
+
     def extractData(self, dataSet, subset, args):
 
         pdArg = pd.Series(args)
@@ -240,7 +286,10 @@ class phenoData:
 
         slicedData = self.data[self.getDFIndexFromName(dataSet)]
 
-        df = slicedData[subset]
+        if(subset!="FULL"):
+            df = slicedData[subset]
+        else:
+            df = slicedData
 
         for x in f:
             if x != ["0"]:
@@ -248,11 +297,26 @@ class phenoData:
 
         return df
 
+    def processData(self,dataSet,args):
+
+        tempData = dataSet
+        pdArg = pd.Series(args)
+        argList = self.parseArgs(pdArg)
+
+
+        for x in argList:
+            if x != ["0"]:
+                tempData = self.evaluateProcess(tempData, x)
+
+
+        return tempData
 
 f = phenoData("test/")
 
 f.loadViewSets("view/")
+
 f.parseRawViewData()
 f.parseView()
 f.setView(0)
 f.displayAllViews()
+#f.plotManagers[0].startAnim()
