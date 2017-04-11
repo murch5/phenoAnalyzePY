@@ -2,3 +2,7 @@
 *.png
 *.csv
 *.viewSet
+\data*
+*.mp4
+\boundary*
+\.idea*
