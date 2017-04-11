@@ -6,4 +6,4 @@
 *.mp4
 \boundary*
 \.idea*
-_pycache_*
+\_pycache_\*
