@@ -4,8 +4,6 @@ import csv
 import generateFrameSet as gfs
 import processingFunc as process
 
-
-
 if not PATH in sys.path:
     sys.path.append(PATH)
 
@@ -19,8 +17,8 @@ import plot_manager as plot_manager
 from violin import violin
 from pie import pie
 from scatter import scatter
-
-
+from track import track
+from GFFdata import GFF
 
 
 class phenoData:
@@ -36,7 +34,7 @@ class phenoData:
 
         return fileName
 
-    def getViewsFromDir(self,directory):
+    def getViewsFromDir(self, directory):
 
         dirFiles = glob.glob(os.path.join(directory, "*.viewSet"))
 
@@ -49,6 +47,7 @@ class phenoData:
         self.fileNames = self.getFilesFromDir(self.directory, "*.csv")
         self.data = self.loadData()
         self.dfNames = self.getNames()
+        self.figureArgList = []
 
         # View specific variables
         self.viewSetRaw = []
@@ -110,19 +109,24 @@ class phenoData:
         numViews = len(viewIndices)
 
         viewIndices.append(len(self.viewSetRaw))
+        figureArgList = []
 
         for i in range(0, numViews):
-            title = self.viewSetRaw[viewIndices[i]][0][1:]
-            self.viewNames.append(title)
+            figureParam = self.viewSetRaw[viewIndices[i]][0][1:]
+            figureParam = figureParam.split(",")
+            self.viewNames.append(figureParam[0])
+            self.figureArgList.append(figureParam[1:])
+
             entryList = []
             for q in range(viewIndices[i] + 1, (viewIndices[i + 1])):
                 temp = [self.arrayCheck(self.viewSetRaw[q][0]), self.arrayCheck(self.viewSetRaw[q][1]),
                         self.arrayCheck(self.viewSetRaw[q][2]), self.arrayCheck(self.viewSetRaw[q][3]),
                         self.arrayCheck(self.viewSetRaw[q][4]), self.arrayCheck(self.viewSetRaw[q][5]),
-                        self.arrayCheck(self.viewSetRaw[q][6]), self.arrayCheck(self.viewSetRaw[q][7])]
+                        self.arrayCheck(self.viewSetRaw[q][6]), self.arrayCheck(self.viewSetRaw[q][7]),
+                        self.arrayCheck(self.viewSetRaw[q][8])]
                 entry = pd.Series(temp, name=self.viewSetRaw[q][0],
                                   index=["title", "position", "plotType", "dataSet", "data", "func", "dataArgs",
-                                         "plotArgs"])
+                                         "plotArgs", "annotate"])
                 entryList.append(entry)
 
             view = pd.DataFrame(entryList)
@@ -137,14 +141,14 @@ class phenoData:
         for x in self.viewSet:
 
             viewIndex += 1
-            newplot = plot_manager.plot_manager(self.viewNames[viewIndex])
+            newplot = plot_manager.plot_manager(self.viewNames[viewIndex], self.figureArgList[viewIndex])
 
             for index, row in x.iterrows():
                 dataTemp = self.extractData(row[3], row[4], row[6])
 
-                processTemp = self.processData(dataTemp,row[5])
+                processTemp = self.processData(dataTemp, row[5])
 
-                newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], processTemp, row[7])
+                newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], processTemp, row[7], row[8])
 
             self.plotManagers.append(newplot)
 
@@ -163,7 +167,7 @@ class phenoData:
 
         return
 
-    def loadCSV(self,fileName):
+    def loadCSV(self, fileName):
 
         dataFrame = pd.read_csv(fileName, sep=",")
 
@@ -175,7 +179,7 @@ class phenoData:
 
         return data
 
-    def loadDir(self,directory):
+    def loadDir(self, directory):
 
         files = glob.glob(os.path.join(directory, "*.*"))
 
@@ -183,7 +187,13 @@ class phenoData:
 
         return data
 
-    fileTypes = {"csv": loadCSV, "tif": loadTIF, "": loadDir}
+    def loadGFF(self, fileName):
+
+        data = GFF(fileName)
+
+        return data
+
+    fileTypes = {"csv": loadCSV, "tif": loadTIF, "": loadDir, "gff": loadGFF}
 
     def loadData(self):
 
@@ -191,25 +201,25 @@ class phenoData:
         for i in self.fileNames:
             for q in i:
                 extension = os.path.splitext(q)[1][1:]
-                data = phenoData.fileTypes[extension](self,q)
+                data = phenoData.fileTypes[extension](self, q)
                 dataSet.append(data)
 
         return dataSet
 
-    sortType = {"ascend":True,"descend":False}
+    sortType = {"ascend": True, "descend": False}
 
     def sort(self, data, arg):
 
         newdata = pd.DataFrame(data)
         direction = arg[0]
-        newdata.sort_values(by=0,ascending=phenoData.sortType[direction],inplace=True)
+        newdata.sort_values(by=0, ascending=phenoData.sortType[direction], inplace=True)
         return newdata
 
     def sortIndex(self, data, arg):
 
         newdata = pd.DataFrame(data)
         direction = arg[0]
-        newdata.sort_index(ascending=phenoData.sortType[direction],inplace=True)
+        newdata.sort_index(ascending=phenoData.sortType[direction], inplace=True)
         return newdata
 
     def filterByVal(self, data, arg):
@@ -219,7 +229,15 @@ class phenoData:
         for x in arg:
             newdata = newdata.query(x)
 
-        newdata.reset_index(drop=True,inplace=True)
+        newdata.reset_index(drop=True, inplace=True)
+
+        return newdata
+
+    def filterNA(self, data, arg):
+
+        newdata = pd.DataFrame(data)
+
+        newdata = newdata.dropna(0, subset=[arg])
 
         return newdata
 
@@ -233,7 +251,14 @@ class phenoData:
 
     def groupbyval(self, data, arg):
 
-        newdata = data[:]
+        print(type(data))
+
+        if isinstance(data, pd.DataFrame):
+            print(data)
+            newdata = data.ix[:, 0]
+
+        else:
+            newdata = data[:]
 
         if "inclNA" in arg:
             newdata.fillna("n/a", inplace=True)
@@ -251,7 +276,8 @@ class phenoData:
     def filterByID(self):
         return
 
-    dataFunc = {"filterByVal": filterByVal, "groupBy": groupby, "groupByVal": groupbyval, "sort":sort, "sortIndex":sortIndex}
+    dataFunc = {"filterByVal": filterByVal, "groupBy": groupby, "groupByVal": groupbyval, "sort": sort,
+                "sortIndex": sortIndex, "filterNA": filterNA}
     processFunc = {"gaussian": process.gaussian, "variance": process.variance, "stddev": process.stddev}
 
     def parseArgs(self, args):
@@ -285,8 +311,9 @@ class phenoData:
         # slicedData = self.data[int(dataSet)]
 
         slicedData = self.data[self.getDFIndexFromName(dataSet)]
-
-        if(subset!="FULL"):
+        print(slicedData)
+        print(subset)
+        if (subset != "FULL"):
             df = slicedData[subset]
         else:
             df = slicedData
@@ -297,19 +324,18 @@ class phenoData:
 
         return df
 
-    def processData(self,dataSet,args):
+    def processData(self, dataSet, args):
 
         tempData = dataSet
         pdArg = pd.Series(args)
         argList = self.parseArgs(pdArg)
 
-
         for x in argList:
             if x != ["0"]:
                 tempData = self.evaluateProcess(tempData, x)
 
-
         return tempData
+
 
 f = phenoData("test/")
 
@@ -319,4 +345,4 @@ f.parseRawViewData()
 f.parseView()
 f.setView(0)
 f.displayAllViews()
-#f.plotManagers[0].startAnim()
+# f.plotManagers[0].startAnim()
