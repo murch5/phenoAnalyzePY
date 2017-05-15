@@ -336,7 +336,6 @@ class phenoData:
 
         return tempData
 
-
 f = phenoData("test/")
 
 f.loadViewSets("view/")
