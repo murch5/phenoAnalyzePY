@@ -8,3 +8,4 @@
 \.idea*
 \_pycache_\*
 *.pyc
+*.cluster
