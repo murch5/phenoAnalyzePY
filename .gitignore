@@ -1,3 +1,11 @@
 *.pdf
 *.png
 *.csv
+*.viewSet
+\data*
+*.mp4
+\boundary*
+\.idea*
+\_pycache_\*
+*.pyc
+*.cluster
