@@ -1,11 +1,11 @@
-PATH = '/Users/Ryan/PycharmProjects/plot_managerPY'
+#PATH = '/Users/Ryan/PycharmProjects/plot_managerPY'
 import sys
 import csv
 import generateFrameSet as gfs
 import processingFunc as process
 
-if not PATH in sys.path:
-    sys.path.append(PATH)
+#if not PATH in sys.path:
+   # sys.path.append(PATH)
 
 # Phenotype data loading and manipulation class object
 
@@ -13,11 +13,8 @@ import pandas as pd
 import glob as glob
 import os as os
 
-import plot_manager as plot_manager
-from violin import violin
-from pie import pie
-from scatter import scatter
-from track import track
+import plotmanager.plot_manager as pltmanager
+
 from GFFdata import GFF
 
 
@@ -141,14 +138,14 @@ class phenoData:
         for x in self.viewSet:
 
             viewIndex += 1
-            newplot = plot_manager.plot_manager(self.viewNames[viewIndex], self.figureArgList[viewIndex])
+            newplot = pltmanager.plot_manager(self.viewNames[viewIndex], self.figureArgList[viewIndex])
 
             for index, row in x.iterrows():
                 dataTemp = self.extractData(row[3], row[4], row[6])
 
                 processTemp = self.processData(dataTemp, row[5])
 
-                newplot.addPlot(row[0], row[1], plot_manager.chartTypes[(row[2])], processTemp, row[7], row[8])
+                newplot.addPlot(row[0], row[1], pltmanager.chartTypes[(row[2])], processTemp, row[7], row[8])
 
             self.plotManagers.append(newplot)
 
