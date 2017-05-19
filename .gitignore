@@ -2,7 +2,9 @@
 *.png
 *.csv
 *.viewSet
-\data*
+\plotanalyze\input\*
+\plotanalyze\output\*
+\plotanalyze\process\*
 *.mp4
 \boundary*
 \.idea*
