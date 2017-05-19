@@ -2,12 +2,10 @@
 *.png
 *.csv
 *.viewSet
-\plotanalyze\input*
-\plotanalyze\output*
-\plotanalyze\process*
+/plotanalyze/input*
+/plotanalyze/output*
+/plotanalyze/process*
+.idea*
 *.mp4
-\boundary*
-\.idea*
-\_pycache_\*
 *.pyc
 *.cluster
