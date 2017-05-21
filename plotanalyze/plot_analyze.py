@@ -1,24 +1,80 @@
-#PATH = '/Users/Ryan/PycharmProjects/plot_managerPY'
+
+#Imports
 import csv
-import getopt
+import getopt as getopt
 import glob as glob
 import os as os
-import sys
-
+import sys as sys
 import pandas as pd
+
+#Import plot manager
 import plotmanager.plot_manager as pltmanager
 
+
+#Import plot_analyze packages and modules
 from plotanalyze import processingFunc as process, generateFrameSet as gfs
 from plotanalyze.datatype.GFFdata import GFF
 
+import datatypes as dt
 
- #if not PATH in sys.path:
-# sys.path.append(PATH)
-# Phenotype data loading and manipulation class object
-
+#Append the plotanalyze path to sys for cmd line
 sys.path.append(os.path.dirname(__file__))
 
+#Constant for version number
+VERSION = "0.1.1"
+
+#Dictionary containing encoding for data types
+data_types = {}
+data_types.update(dict.fromkeys(["csv","tsv"],dt.table.Table))
+data_types.update(dict.fromkeys(["tif","png"],dt.image.Image))
+
+
 class PlotAnalyze:
+
+    def deploy_data(self, input="./input/"):
+        #Deploy data function
+        print("INFO     Deploying data...")
+        #Get the name of all directories in current working directory
+        #Check if input directory already exists
+
+        if os.path.isfile(input):
+            extension = os.path.splitext(input)[1]
+            if extension == ".txt" or extension == "":
+                print("INFO         Input file list detected")
+            elif extension == ".gz" or extension == ".tgz":
+                print("INFO         Input gzip tar ball detected")
+                return
+        elif os.path.exists(input):
+            print("INFO         Input path detected")
+            print("INFO         Compiling data file list...")
+            self.data_filelist = glob.glob(input + "**/*.*",recursive=True)
+            print(self.data_filelist)
+
+        for file in self.data_filelist:
+            ext = os.path.splitext(file)[1][1:]
+            data_temp = data_types[ext]()
+            data_temp.set_filename(file)
+            self.data.append(data_temp)
+
+            #self.data.append(
+
+            print(ext)
+
+        return
+
+    def load_viewset(self):
+        return
+    def process_viewset(self):
+        return
+    def load_data(self):
+        return
+    def process_data(self):
+        return
+    def show(self):
+        return
+
+    def cleanup(self):
+        return
     def getFilesFromDir(self, directory):
 
         fileName = []
@@ -46,6 +102,8 @@ class PlotAnalyze:
         self.data = self.loadData()
         self.dfNames = self.getNames()
         self.figureArgList = []
+
+        self.data_filelist = None
 
         # View specific variables
         self.viewSetRaw = []
@@ -336,25 +394,33 @@ def main(argv):
 
     directory = "./"
     viewSetDir = "./views"
+    input = "./input/"
+
+    output = 0
 
     try:
         opts, args = getopt.getopt(argv,"hi:o:",["dir=","view="])
     except getopt.GetoptError:
-        print("plotanalyze.py -d <directory> -v <viewdir>")
+        print("plotanalyze.py -i <input> -o <output> -v <viewdir>")
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
             print("test.py -i <inputfile>")
             sys.exit()
-        elif opt in ("-d", "--dir"):
-            directory = arg
-
+        elif opt in ("-i", "--input"):
+            input = arg
+        elif opt in ("-o", "--output"):
+            output = arg
         elif opt in ("-v", "--view"):
             viewSetDir = arg
-    print("The currect directory is: " + directory)
-    print("The currect view set directory is: " + viewSetDir)
+
+
+
+    print("INFO     Plot Analyze v" + VERSION)
 
     plotanalyze = PlotAnalyze(directory)
+
+    plotanalyze.deploy_data(input)
 
     plotanalyze.loadViewSets(viewSetDir)
 
