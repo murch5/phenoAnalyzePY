@@ -4,7 +4,7 @@
 *.viewSet
 /plotanalyze/input*
 /plotanalyze/output*
-/plotanalyze/process*
+/plotanalyze/process/*
 .idea*
 *.mp4
 *.pyc
