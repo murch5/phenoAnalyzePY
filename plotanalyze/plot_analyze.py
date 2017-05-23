@@ -1,41 +1,29 @@
 
-#Imports
-import csv
+# Imports
 import getopt as getopt
 import glob as glob
 import os as os
 import sys as sys
-import pandas as pd
-import numpy as np
-
 import xml.etree.ElementTree as et
 import datetime as datetime
 import copy as copy
 
-#Import plot manager
-import plotmanager.plot_manager as pltmanager
-
-
-#Import plot_analyze packages and modules
-from plotanalyze import processingFunc as process, generateFrameSet as gfs
-from plotanalyze.datatype.GFFdata import GFF
-
+import matplotlib.pyplot as plt
 import datatypes as dt
-
 import plotanalyze.view as view
 
-#Append the plotanalyze path to sys for cmd line
+# Append the plotanalyze path to sys for cmd line
 sys.path.append(os.path.dirname(__file__))
 
-#Constant for version number
+# Constant for version number
 VERSION = "0.1.1"
 
-#Dictionary containing encoding for data types
+# Dictionary containing encoding for data types
 data_types = {}
 data_types.update(dict.fromkeys(["csv","tsv"],dt.table.Table))
 data_types.update(dict.fromkeys(["tif","png"],dt.image.Image))
 
-#Dictionary containing keys for various log message types
+# Dictionary containing keys for various log message types
 msg_type = {}
 msg_type.update(dict.fromkeys(["HEAD","H",0],"HEAD"))
 msg_type.update(dict.fromkeys(["INFO","I",1],"INFO"))
@@ -51,9 +39,9 @@ def log(msg,indent,type="INFO"):
 class PlotAnalyze:
 
     def deploy_data(self, input="./input/"):
-        #Deploy data function
-        #Get the name of all directories in current working directory
-        #Check if input directory already exists
+        # Deploy data function
+        # Get the name of all directories in current working directory
+        # Check if input directory already exists
 
         if os.path.isfile(input):
             extension = os.path.splitext(input)[1]
@@ -87,11 +75,17 @@ class PlotAnalyze:
         elif os.path.exists(viewset):
             log("View set directory detected",2,1)
             log("Compiling view sets...",3,1)
-            self.viewset_filelist = glob.glob(viewset + "**/*.*")
+            self.viewset_filelist = glob.glob(viewset + "**.xml")
+            self.viewset_xml = et.ElementTree(et.Element("root"))
+            viewset_root = self.viewset_xml.getroot()
+            for viewset_iter in self.viewset_filelist:
+                new_viewset = et.parse(viewset_iter)
+                for viewsets in new_viewset.iter("viewset"):
+                    viewset_root.append(viewsets)
 
+            self.viewset_xml.write("combined_xml.xml")
 
         return
-
 
     def process_viewset(self):
 
@@ -129,15 +123,13 @@ class PlotAnalyze:
             if data.get_name() in self.data_active_list:
                 data.load()
                 self.data_active.append(data)
+                self.data_index_dict.update({data.get_name():(len(self.data_active)-1)})
 
         del self.data[:]
 
         return
 
     def process_data(self):
-
-        index_dict = dict(zip(self.data_active_list,range(0,len(self.data_active_list))))
-
         for viewset in self.viewset:
             for view in viewset.views:
                 plot_set = view.get_xml().findall(".//plot")
@@ -145,13 +137,15 @@ class PlotAnalyze:
                     subplots_set = plot.findall(".//subplot")
                     for subplot in subplots_set:
                         datasets = subplot.findall(".//data//dataset")
+                        new_data_compiled = []
                         for data in datasets:
                             data_name = data.findtext("name")
-                            index = index_dict[data_name]
+                            index = self.data_index_dict[data_name]
                             new_data = copy.deepcopy(self.data_active[index])
                             new_data.processing(data.find(".//processing"))
+                            new_data_compiled.append(new_data)
 
-                        view.figure.add_plot(new_data,subplot.findtext("plottype"),subplot)
+                        view.figure.add_plot(new_data_compiled,subplot.findtext("plottype"),subplot)
 
         return
 
@@ -159,6 +153,8 @@ class PlotAnalyze:
 
         for viewset in self.viewset:
             viewset.show_views()
+
+        plt.show()
 
         return
 
@@ -175,21 +171,22 @@ class PlotAnalyze:
         self.viewset = []
         self.data_active_list = []
         self.data_active = []
+        self.data_index_dict = {}
 
         return
-
 
 def main(argv):
 
     directory = "./"
-    viewset = "./views/venn2.xml"
+    viewset = "./views/"
     input = "./input/"
     output = "./output/"
+    silent = False
 
     try:
         opts, args = getopt.getopt(argv,"hi:o:",["dir=","view="])
     except getopt.GetoptError:
-        print("plotanalyze.py -i <input> -o <output> -v <viewdir>")
+        print("plotanalyze.py -i <input> -o <output> -v <viewdir> -s <silent>")
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
@@ -201,6 +198,9 @@ def main(argv):
             output = arg
         elif opt in ("-v", "--view"):
             viewset = arg
+        elif opt in ("-s", "--silent"):
+            silent = True
+
 
     log("Plot Analyze v" + VERSION,0,0)
     log("**********************************", 0, 0)
