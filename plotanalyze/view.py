@@ -1,5 +1,6 @@
 #Import plot manager
 import plotmanager.plot_manager as pltmanager
+import matplotlib.pyplot as plt
 
 class View():
 
@@ -33,8 +34,6 @@ class View():
 
     def show(self):
         self.figure.draw_plots()
-        self.figure.show_plots()
-
 
 class Viewset():
 
