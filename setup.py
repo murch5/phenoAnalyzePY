@@ -8,5 +8,5 @@ setup(
     license='',
     author='Ryan',
     author_email='',
-    description='Data analysis and plotting suite'
+    description='Data analysis and plotting suite', requires=['matplotlib','pandas']
 )
