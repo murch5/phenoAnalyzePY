@@ -9,7 +9,8 @@ import datetime as datetime
 import copy as copy
 
 import matplotlib.pyplot as plt
-import datatypes as dt
+import data_manager.data_manager as dm
+import data_manager.datatypes as dt
 import plotanalyze.view as view
 
 # Append the plotanalyze path to sys for cmd line
@@ -137,15 +138,15 @@ class PlotAnalyze:
                     subplots_set = plot.findall(".//subplot")
                     for subplot in subplots_set:
                         datasets = subplot.findall(".//data//dataset")
-                        new_data_compiled = []
+                        new_data_manager = dm.DataManager()
                         for data in datasets:
                             data_name = data.findtext("name")
                             index = self.data_index_dict[data_name]
                             new_data = copy.deepcopy(self.data_active[index])
                             new_data.processing(data.find(".//processing"))
-                            new_data_compiled.append(new_data)
+                            new_data_manager.add_data(new_data)
 
-                        view.figure.add_plot(new_data_compiled,subplot.findtext("plottype"),subplot)
+                        view.figure.add_plot(new_data_manager,subplot.findtext("plottype"),subplot)
 
         return
 
