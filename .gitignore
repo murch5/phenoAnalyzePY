@@ -11,3 +11,5 @@
 *.cluster
 *tar.gz
 *.xml
+*.ini
+*.log

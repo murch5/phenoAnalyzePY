@@ -2,6 +2,10 @@
 import plotmanager.plot_manager as pltmanager
 import matplotlib.pyplot as plt
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class View():
 
     def __init__(self):
@@ -30,6 +34,7 @@ class View():
     def init_plot(self):
         self.plot_engine = self.view_XML.find(".//plot_engine").text
         plot_title = self.view_XML.find(".//title").text
+        logger.debug("Initializing plot manager")
         self.figure = pltmanager.plot_manager(plot_title,self.viewset_style_XML,self.view_XML)
 
     def show(self):
