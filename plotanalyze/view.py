@@ -1,10 +1,10 @@
 #Import plot manager
 import plotmanager.plot_manager as pltmanager
 import matplotlib.pyplot as plt
+import io_util.xml_parse as xml_parser
 
 import logging
 logger = logging.getLogger(__name__)
-
 
 class View():
 
@@ -35,7 +35,7 @@ class View():
         self.plot_engine = self.view_XML.find(".//plot_engine").text
         plot_title = self.view_XML.find(".//title").text
         logger.debug("Initializing plot manager")
-        self.figure = pltmanager.plot_manager(plot_title,self.viewset_style_XML,self.view_XML)
+        self.figure = pltmanager.plot_manager(plot_title,self.viewset_style_XML,xml_parser.xml_to_dict(self.view_XML))
 
     def show(self):
         self.figure.draw_plots()
