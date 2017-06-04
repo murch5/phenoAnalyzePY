@@ -7,7 +7,6 @@ loggerconfig_stream = open("logger.ini", "r")
 log_config = yaml.safe_load(loggerconfig_stream)
 logging.config.dictConfig(log_config)
 
-
 import getopt as getopt
 import glob as glob
 import os as os
@@ -20,6 +19,8 @@ import matplotlib.pyplot as plt
 import data_manager.data_manager as dm
 import data_manager.datatypes as dt
 import plotanalyze.view as view
+
+import io_util.xml_parse as xml_parser
 
 # Append the plotanalyze path to sys for cmd line
 sys.path.append(os.path.dirname(__file__))
@@ -140,11 +141,11 @@ class PlotAnalyze:
 
         self.data_active_list = set(self.data_active_list)
 
-        logging.debug("---Active data sets: " + str(self.data_active_list))
+        logging.debug("--- Active data sets: " + str(self.data_active_list))
 
         for data in self.data:
             if data.get_name() in self.data_active_list:
-                logging.debug("------Loading data: " + str(data.get_name()))
+                logging.debug("------ Loading data: " + str(data.get_name()))
                 data.load()
                 self.data_active.append(data)
                 self.data_index_dict.update({data.get_name():(len(self.data_active)-1)})
@@ -169,7 +170,7 @@ class PlotAnalyze:
                             new_data.processing(data.find(".//processing"))
                             new_data_manager.add_data(new_data)
 
-                        view.figure.add_plot(new_data_manager,subplot.findtext("plottype"),subplot)
+                        view.figure.add_plot(new_data_manager,subplot.findtext("plottype"),xml_parser.xml_to_dict(subplot))
 
         return
 
