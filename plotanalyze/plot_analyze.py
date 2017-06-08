@@ -22,6 +22,8 @@ import plotanalyze.view as view
 
 import io_util.xml_parse as xml_parser
 
+import process
+
 # Append the plotanalyze path to sys for cmd line
 sys.path.append(os.path.dirname(__file__))
 
@@ -167,12 +169,34 @@ class PlotAnalyze:
                             data_name = data.findtext("name")
                             index = self.data_index_dict[data_name]
                             new_data = copy.deepcopy(self.data_active[index])
-                            new_data.processing(data.find(".//processing"))
+
+                            #TODO Add new function to add new process_manager
+                            #TODO Add func to extract list of processing steps contained in xml
+                            #TODO Add func to pass new process stack to process_manager passing dict contents
+                            processing_XML = data.find(".//processing")
+
+                            process_manager = process.ProcessManager()
+                            process_manager.get_available_class_types()
+
+                            for process_step in processing_XML:
+                                process_step_dict = xml_parser.xml_to_dict(process_step)
+                                print(process_step_dict)
+                                for d in process_step_dict.keys():
+                                    process_manager.add_class_object(d,process_step_dict.get(d))
+                                    print(process_step)
+
+                            new_data.set_process_manager(process_manager)
+
+
+                            new_data.evaluate_process_stack()
+
+
                             new_data_manager.add_data(new_data)
 
                         view.figure.add_plot(new_data_manager,subplot.findtext("plottype"),xml_parser.xml_to_dict(subplot))
 
         return
+
 
     def show(self):
 
