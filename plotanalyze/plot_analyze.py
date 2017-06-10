@@ -17,8 +17,12 @@ import copy as copy
 
 import matplotlib.pyplot as plt
 import data_manager.data_manager as dm
+import data_manager as data_manager
+import plotmanager as plotmanager
+import process as process
 import data_manager.datatypes as dt
 import plotanalyze.view as view
+import factory_manager as fm
 
 import io_util.xml_parse as xml_parser
 
@@ -32,8 +36,8 @@ VERSION = "0.1.1"
 
 # Dictionary containing encoding for data types
 data_types = {}
-data_types.update(dict.fromkeys(["csv","tsv"],dt.table.Table))
-data_types.update(dict.fromkeys(["tif","png"],dt.image.Image))
+data_types.update(dict.fromkeys(["csv","tsv"],"Table"))
+data_types.update(dict.fromkeys(["tif","png"],"Image"))
 
 class PlotAnalyze:
 
@@ -68,13 +72,7 @@ class PlotAnalyze:
             logging.error("No input file or directory detected")
 
         logging.debug("--- File list: " + str(self.data_filelist))
-        for file in self.data_filelist:
 
-            filename, ext = os.path.splitext(os.path.basename(file))
-            data_temp = data_types[ext[1:]]()
-            data_temp.set_filename(file)
-            data_temp.set_name(filename)
-            self.data.append(data_temp)
 
         return
 
@@ -135,6 +133,7 @@ class PlotAnalyze:
 
     def load_data(self):
 
+        self.master_data = self.data_factory_manager.add_factory_stack()
         #Determine which data is active by which datasets are referenced in viewset.xml
         active_datasets = self.viewset_xml.findall(".//dataset/name")
 
@@ -145,14 +144,26 @@ class PlotAnalyze:
 
         logging.debug("--- Active data sets: " + str(self.data_active_list))
 
-        for data in self.data:
-            if data.get_name() in self.data_active_list:
-                logging.debug("------ Loading data: " + str(data.get_name()))
-                data.load()
-                self.data_active.append(data)
-                self.data_index_dict.update({data.get_name():(len(self.data_active)-1)})
+        for file in self.data_filelist:
+            filename, ext = os.path.splitext(os.path.basename(file))
+            if filename in self.data_active_list:
+                self.master_data.add_class_object(data_types.get(ext[1:]),{"file_name": file, "name":filename, "file_ext":ext[1:]})
+            # self.data.
+            # data_temp = data_types[ext[1:]]()
+            # data_temp.set_filename(file)
+            # data_temp.set_name(filename)
+            # self.data.append(data_temp)
 
-        del self.data[:]
+       # print(self.master_data)
+       # for entry in self.data_filelist:
+        #    filename, ext = os.path.splitext(os.path.basename(entry))
+         #   if filename in self.data_active_list:
+         #       logging.debug("------ Loading data: " + str(filename))
+          #      data.load()
+           #     self.data_active.append(data)
+           #     self.data_index_dict.update({data.get_name():(len(self.data_active)-1)})
+
+       # del self.data[:]
 
         return
 
@@ -164,36 +175,49 @@ class PlotAnalyze:
                     subplots_set = plot.findall(".//subplot")
                     for subplot in subplots_set:
                         datasets = subplot.findall(".//data//dataset")
-                        new_data_manager = dm.DataManager()
+
+                        new_dm = self.data_factory_manager.add_factory_stack()
+                        data_list = []
                         for data in datasets:
                             data_name = data.findtext("name")
-                            index = self.data_index_dict[data_name]
-                            new_data = copy.deepcopy(self.data_active[index])
+                            data_list.append(data_name)
 
-                            #TODO Add new function to add new process_manager
-                            #TODO Add func to extract list of processing steps contained in xml
-                            #TODO Add func to pass new process stack to process_manager passing dict contents
-                            processing_XML = data.find(".//processing")
+                        new_dm = self.data_factory_manager.clone_subset(self.master_data,new_dm,data_list)
 
-                            process_manager = process.ProcessManager()
-                            process_manager.get_available_class_types()
+                        for data in new_dm.get_obj_list():
+                            data.initialize_attr()
+
+                        new_dm.evaluate_stack()
+
+                        print(type(new_dm))
+                        #TODO Add new function to add new process_manager
+                        #TODO Add func to extract list of processing steps contained in xml
+                        #TODO Add func to pass new process stack to process_manager passing dict contents
+                        processing_XML = data.find(".//processing")
+
+                        for data in new_dm.get_obj_list():
+
+                            new_processm = self.process_factory_manager.add_factory_stack()
+
+
+                            #process_manager = process.ProcessManager()
+                            #process_manager.get_available_class_types()
 
                             for process_step in processing_XML:
                                 process_step_dict = xml_parser.xml_to_dict(process_step)
                                 print(process_step_dict)
                                 for d in process_step_dict.keys():
-                                    process_manager.add_class_object(d,process_step_dict.get(d))
+                                    new_processm.add_class_object(d,process_step_dict.get(d))
                                     print(process_step)
 
-                            new_data.set_process_manager(process_manager)
+
+                            data.set_process_manager(new_processm)
+
+                            data.process_data()
 
 
-                            new_data.evaluate_process_stack()
 
-
-                            new_data_manager.add_data(new_data)
-
-                        view.figure.add_plot(new_data_manager,subplot.findtext("plottype"),xml_parser.xml_to_dict(subplot))
+                    view.figure.add_plot(new_dm,subplot.findtext("plottype"),xml_parser.xml_to_dict(subplot))
 
         return
 
@@ -211,7 +235,7 @@ class PlotAnalyze:
         return
 
     def __init__(self, directory):
-        self.directory = directory  # directory containing the phenoData to load
+        self.directory = directory  # directory containing the PhenoData to load
 
         self.data_filelist = None
         self.viewset_filelist = None
@@ -221,6 +245,9 @@ class PlotAnalyze:
         self.data_active_list = []
         self.data_active = []
         self.data_index_dict = {}
+
+        self.data_factory_manager = fm.FactoryManager(dm.DataManager, data_manager)
+        self.process_factory_manager = fm.FactoryManager(process.ProcessManager,process)
 
         return
 
