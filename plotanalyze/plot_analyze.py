@@ -1,4 +1,5 @@
 
+# Logging imports
 import logging
 import logging.config
 import yaml
@@ -7,10 +8,19 @@ loggerconfig_stream = open("logger.ini", "r")
 log_config = yaml.safe_load(loggerconfig_stream)
 logging.config.dictConfig(log_config)
 
+# System imports
 import getopt as getopt
 import glob as glob
 import os as os
 import sys as sys
+
+
+# Add local package directories to path for dev work
+sys.path.insert(0,"C:/Users/Ryan/PycharmProjects/datatypesPY")
+sys.path.insert(1,"C:/Users/Ryan/PycharmProjects/plot_managerPY")
+sys.path.insert(2,"C:/Users/Ryan/PycharmProjects/processPY")
+sys.path.insert(3,"C:/Users/Ryan/PycharmProjects/factory_managerPY")
+
 import xml.etree.ElementTree as et
 import datetime as datetime
 import copy as copy
@@ -25,14 +35,11 @@ import plotanalyze.view as view
 import factory_manager as fm
 
 import io_util.xml_parse as xml_parser
-
 import process
 
 # Append the plotanalyze path to sys for cmd line
 sys.path.append(os.path.dirname(__file__))
 
-# Constant for version number
-VERSION = "0.1.1"
 
 # Dictionary containing encoding for data types
 data_types = {}
@@ -73,7 +80,6 @@ class PlotAnalyze:
 
         logging.debug("--- File list: " + str(self.data_filelist))
 
-
         return
 
     def load_viewset(self, viewset):
@@ -106,31 +112,6 @@ class PlotAnalyze:
 
         return
 
-    def process_viewset(self):
-
-        view_root = self.viewset_xml.getroot()
-
-        for viewset in view_root.iter("viewset"):
-            new_viewset = view.Viewset()
-            new_viewset.set_title(viewset.findtext("title"))
-            logging.debug("--- Current view set: " + str(viewset.findtext("title")))
-            new_viewset.set_xml(viewset)
-
-            for views in viewset.iter("view"):
-                new_view = view.View()
-                new_view.set_title(views.findtext("title"))
-                logging.debug("------ Current view: " + str(views.findtext("title")))
-                new_view.set_xml(views)
-                new_view.set_viewset_style_XML(viewset)
-                logging.debug("------ Initialize view subplot")
-                new_view.init_plot()
-
-                new_viewset.views.append(new_view)
-
-            self.viewset.append(new_viewset)
-
-        return
-
     def load_data(self):
 
         self.master_data = self.data_factory_manager.add_factory_stack()
@@ -147,25 +128,62 @@ class PlotAnalyze:
         for file in self.data_filelist:
             filename, ext = os.path.splitext(os.path.basename(file))
             if filename in self.data_active_list:
-                self.master_data.add_class_object(data_types.get(ext[1:]),{"file_name": file, "name":filename, "file_ext":ext[1:]})
-            # self.data.
-            # data_temp = data_types[ext[1:]]()
-            # data_temp.set_filename(file)
-            # data_temp.set_name(filename)
-            # self.data.append(data_temp)
-
-       # print(self.master_data)
-       # for entry in self.data_filelist:
-        #    filename, ext = os.path.splitext(os.path.basename(entry))
-         #   if filename in self.data_active_list:
-         #       logging.debug("------ Loading data: " + str(filename))
-          #      data.load()
-           #     self.data_active.append(data)
-           #     self.data_index_dict.update({data.get_name():(len(self.data_active)-1)})
-
-       # del self.data[:]
+                self.master_data.add(data_types.get(ext[1:]),{"file_name": file, "name":filename, "file_ext":ext[1:]})
 
         return
+
+    def process(self):
+
+        view_root = self.viewset_xml.getroot()
+
+        for viewset in view_root.iter("viewset"):
+            new_viewset = self.view_factory_manager.add_factory_stack()
+
+            for views in viewset.iter("view"):
+                new_view = new_viewset.add("View", {"view_XML":views})
+
+                new_view_engine = views.find("plot_engine")
+
+                new_plot_manager = self.plot_factory_manager.add_factory_stack()
+                new_plot_manager.set("engine",new_view_engine)
+                new_plot_manager.setup_figure()
+
+                plot_list = views.find(".//plot")
+
+                for subplot in plot_list.iter("subplot"):
+
+                    new_subplot_type = subplot.find("plottype").text
+
+                    new_data_manager = self.data_factory_manager.add_factory_stack()
+                    data_sets = subplot.find("data")
+                    data_set_names = data_sets.findall(".//dataset/name")
+                    data_name_list = [element.text for element in data_set_names]
+
+                    new_data_manager = self.data_factory_manager.clone_subset(self.master_data,new_data_manager,data_name_list)
+
+                    for i, data in enumerate(data_sets.iter("dataset")):
+
+                        process_stack = data.find("processing")
+                        new_process_manager = self.process_factory_manager.add_factory_stack()
+
+                        for process in process_stack:
+                            process_step_dict = xml_parser.xml_to_dict(process)
+                            for d in process_step_dict.keys():
+                                new_process_manager.add(d, process_step_dict.get(d),config=True)
+
+                        new_data_manager.get_obj_list()[i].set_process_manager(new_process_manager)
+
+                    plot_settings = subplot.find("plot_style")
+
+                    plot_settings.update({"figure":new_plot_manager.figure})
+
+                    new_plot_manager.add()
+
+                logging.debug("------ Current view: " + str(views.findtext("title")))
+
+        return
+
+
 
     def process_data(self):
         for viewset in self.viewset:
@@ -178,14 +196,14 @@ class PlotAnalyze:
 
                         new_dm = self.data_factory_manager.add_factory_stack()
                         data_list = []
+                        processing_XML = []
+
                         for data in datasets:
                             data_name = data.findtext("name")
+                            processing_XML.append(data.find(".//processing"))
                             data_list.append(data_name)
 
                         new_dm = self.data_factory_manager.clone_subset(self.master_data,new_dm,data_list)
-
-                        for data in new_dm.get_obj_list():
-                            data.initialize_attr()
 
                         new_dm.evaluate_stack()
 
@@ -193,17 +211,17 @@ class PlotAnalyze:
                         #TODO Add new function to add new process_manager
                         #TODO Add func to extract list of processing steps contained in xml
                         #TODO Add func to pass new process stack to process_manager passing dict contents
-                        processing_XML = data.find(".//processing")
 
-                        for data in new_dm.get_obj_list():
+
+                        for i, data in enumerate(new_dm.get_obj_list()):
 
                             new_processm = self.process_factory_manager.add_factory_stack()
 
-
+                            currXML = processing_XML[i]
                             #process_manager = process.ProcessManager()
                             #process_manager.get_available_class_types()
 
-                            for process_step in processing_XML:
+                            for process_step in currXML:
                                 process_step_dict = xml_parser.xml_to_dict(process_step)
                                 print(process_step_dict)
                                 for d in process_step_dict.keys():
@@ -248,6 +266,8 @@ class PlotAnalyze:
 
         self.data_factory_manager = fm.FactoryManager(dm.DataManager, data_manager)
         self.process_factory_manager = fm.FactoryManager(process.ProcessManager,process)
+        self.view_factory_manager = fm.FactoryManager(view.Viewset,view)
+        self.plot_factory_manager = fm.FactoryManager(plotmanager.PlotManager,plotmanager)
 
         return
 
@@ -294,17 +314,17 @@ def main(argv):
 
     plotanalyze.load_viewset(viewset)
 
-    logging.info("Processing view set(s)...")
-
-    plotanalyze.process_viewset()
-
     logging.info("Loading data...")
 
     plotanalyze.load_data()
 
-    logging.info("Processing data...")
+    logging.info("Processing ...")
 
-    plotanalyze.process_data()
+    plotanalyze.process()
+
+   # logging.info("Processing data...")
+
+    #plotanalyze.process_data()
 
     logging.info("Show plots...")
 
