@@ -9,16 +9,15 @@ logger = logging.getLogger(__name__)
 class View(fm.FactoryObject):
 
     def initialize(self):
-        self.title = ""
 
+        self.title = ""
         self.view_style_XML = None
         self.viewset_style_XML = None
         self.figure = None
         self.plot_engine = "matplotlib"
 
-
     def show(self):
-        self.figure.draw_plots()
+        self.plot_manager.call_all("draw")
 
     def do(self, data):
         self.show()
@@ -32,7 +31,7 @@ class Viewset(fm.FactoryStack):
         self.viewset_style_XML = None
         self.views = []
 
-
     def show_views(self):
-        for view in self.views:
-            view.show()
+        self.call_all("show")
+
+
