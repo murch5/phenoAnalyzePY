@@ -9,27 +9,26 @@ import glob as glob
 import os as os
 import sys as sys
 
-# Add local package directories to path for dev work
+import xml.etree.ElementTree as et
+import matplotlib.pyplot as plt
+import io_util.xml_parse as xml_parser
+
+# Import version number from __init__.py
+
+import plotanalyze.__init__ as version
+
 sys.path.insert(0, "C:/Users/Ryan/PycharmProjects/datatypesPY")
 sys.path.insert(1, "C:/Users/Ryan/PycharmProjects/plot_managerPY")
 sys.path.insert(2, "C:/Users/Ryan/PycharmProjects/processPY")
 sys.path.insert(3, "C:/Users/Ryan/PycharmProjects/factory_managerPY")
 sys.path.insert(4, "C:/Users/Ryan/PycharmProjects/ioPY")
 
-import xml.etree.ElementTree as et
-import matplotlib.pyplot as plt
-import io_util.xml_parse as xml_parser
-
 import data_manager.data_manager as dm
 import data_manager as data_manager
-import plotmanager as plotmanager
+import plotmanager as plot_manager
 import process as process
 import plotanalyze.view as view
 import factory_manager as fm
-
-# Import version number from __init__.py
-
-import plotanalyze.__init__ as version
 
 # Set-up logging
 loggerconfig_stream = open("logger.ini", "r")
@@ -43,8 +42,8 @@ data_types = {}
 data_types.update(dict.fromkeys(["csv", "tsv"], "Table"))
 data_types.update(dict.fromkeys(["tif", "png"], "Image"))
 
-
 class PlotAnalyze:
+
     def deploy_data(self, input="./input/"):
         # Deploy data function
         # Get the name of all directories in current working directory
@@ -82,7 +81,7 @@ class PlotAnalyze:
     def load_viewset(self, viewset):
 
         if os.path.isfile(viewset):
-            logging.info("View set file detected")
+            logging.info("--- View set file detected")
 
             self.viewset_filelist = viewset
             self.viewset_xml = et.parse(viewset)
@@ -91,7 +90,7 @@ class PlotAnalyze:
 
 
         elif os.path.exists(viewset):
-            logging.info("View set directory detected")
+            logging.info("--- View set directory detected")
             logging.info("--- Compiling view sets...")
 
             self.viewset_filelist = glob.glob(viewset + "**.xml")
@@ -135,79 +134,106 @@ class PlotAnalyze:
 
     def process(self):
 
+        self._create_viewset()
+
+        return
+
+    def _create_viewset(self):
+
         view_root = self.viewset_xml.getroot()
 
         for i, viewset in enumerate(view_root.iter("viewset")):
-
             new_viewset = self.view_factory_manager.add_factory_stack()
+
             logging.debug(
                 "--- Adding new viewset: " + str(viewset.findtext("title")) + " - " + str(i + 1) + " of " + str(
                     len(view_root.findall("viewset"))))
 
-            for j, views in enumerate(viewset.iter("view")):
+            self._create_view(viewset,new_viewset)
 
-                new_view = new_viewset.add("View", {"view_XML": views})
+        pass
 
-                logging.debug(
-                    "------ Adding new view: " + str(views.findtext("title")) + " - " + str(j + 1) + " of " + str(
-                        len(viewset.findall("view"))))
+    def _create_view(self, viewset, view_manager):
 
-                new_plot_settings = xml_parser.xml_to_dict(views.find("view_settings"))
+        for j, view in enumerate(viewset.iter("view")):
+            view_new = view_manager.add("View", {"view_XML": view})
 
-                new_plot_manager = self.plot_factory_manager.add_factory_stack(new_plot_settings.get("view_settings"))
-                logging.debug("--------- Adding plot manager")
+            logging.debug(
+                "------ Adding new view: " + str(view.findtext("title")) + " - " + str(j + 1) + " of " + str(
+                    len(viewset.findall("view"))))
 
-                new_plot_manager.setup_figure()
+            plot_manager_new = self._create_plot(view)
 
-                plot = views.find(".//plot")
+            view_new.set("plot_manager", plot_manager_new)
 
-                for k, subplot in enumerate(plot.iter("subplot")):
+        pass
 
-                    new_subplot_settings = xml_parser.xml_to_dict(subplot.find("subplot_settings")).get(
-                        "subplot_settings")
+    def _create_plot(self, view):
 
-                    logging.debug(
-                        "------------ Adding new subplot: " + str(subplot.findtext("title")) + " - " + str(
-                            k + 1) + " of " + str(
-                            len(plot.findall("subplot"))))
+        plot_settings = xml_parser.xml_to_dict(view.find("view_settings"))
 
-                    new_data_manager = self.data_factory_manager.add_factory_stack()
+        plot_manager_new = self.plot_factory_manager.add_factory_stack(plot_settings.get("view_settings"))
+        logging.debug("--------- Adding plot manager")
 
-                    data_sets = subplot.find("data")
-                    data_set_names = data_sets.findall(".//dataset/name")
-                    data_name_list = [element.text for element in data_set_names]
+        plot_manager_new.setup_figure()
 
-                    new_data_manager = self.data_factory_manager.clone_subset(self.master_data, new_data_manager,
-                                                                              data_name_list)
+        plot = view.find(".//plot")
 
-                    for i, data in enumerate(data_sets.iter("dataset")):
+        self._create_subplot(plot,plot_manager_new)
 
-                        process_stack = data.find("processing")
-                        new_process_manager = self.process_factory_manager.add_factory_stack()
+        plot_manager_new.push_all("grid_spec", plot_manager_new.get("grid_spec"))
+        plot_manager_new.push_all("figure", plot_manager_new.get("figure"))
+        plot_manager_new.call_all("setup_subplot")
+        plot_manager_new.call_all("set_data")
 
-                        for process in process_stack:
-                            process_step_dict = xml_parser.xml_to_dict(process)
-                            for d in process_step_dict.keys():
-                                new_process_manager.add(d, process_step_dict.get(d))
 
-                        new_data_manager.get_obj_list()[i].set_process_manager(new_process_manager)
+        return plot_manager_new
 
-                    plot_settings = xml_parser.xml_to_dict(subplot.find("plot_style")).get("plot_style")
+    def _create_subplot(self,plot,plot_manager):
 
-                    new_subplot_settings.update(plot_settings)
+        for k, subplot in enumerate(plot.iter("subplot")):
+            subplot_settings = xml_parser.xml_to_dict(subplot.find("subplot_settings")).get(
+                "subplot_settings")
 
-                    new_data_manager.call_all("process_data")
-                    subplot = new_plot_manager.add(new_subplot_settings.get("plot_type"), new_subplot_settings)
-                    subplot.set("data_manager", new_data_manager)
+            logging.debug(
+                "------------ Adding new subplot: " + str(subplot.findtext("title")) + " - Plot type: " +  str(subplot_settings.get("plot_type")) + " - " + str(
+                    k + 1) + " of " + str(
+                    len(plot.findall("subplot"))))
 
-                new_plot_manager.push_all("grid_spec", new_plot_manager.get("grid_spec"))
-                new_plot_manager.push_all("figure", new_plot_manager.get("figure"))
-                new_plot_manager.call_all("setup_subplot")
-                new_plot_manager.call_all("set_data")
+            data_manager_new = self._create_data_manager(subplot.find("data"))
 
-                new_view.set("plot_manager", new_plot_manager)
+            plot_settings = xml_parser.xml_to_dict(subplot.find("plot_style")).get("plot_style")
 
-        return
+            subplot_settings.update(plot_settings)
+
+            data_manager_new.call_all("process_data")
+            subplot_new = plot_manager.add(subplot_settings.get("plot_type"), subplot_settings)
+            subplot_new.set("data_manager", data_manager_new)
+
+        pass
+
+    def _create_data_manager(self, data_sets):
+
+        data_manager_new = self.data_factory_manager.add_factory_stack()
+
+        data_set_names = data_sets.findall(".//dataset/name")
+        data_name_list = [element.text for element in data_set_names]
+
+        data_manager_new = self.data_factory_manager.clone_subset(self.master_data, data_manager_new,
+                                                                  data_name_list)
+        for i, data in enumerate(data_sets.iter("dataset")):
+
+            process_stack = data.find("processing")
+            process_manager_new = self.process_factory_manager.add_factory_stack()
+
+            for process in process_stack:
+                process_step_dict = xml_parser.xml_to_dict(process)
+                for d in process_step_dict.keys():
+                    process_manager_new.add(d, process_step_dict.get(d))
+
+            data_manager_new.get_obj_list()[i].set_process_manager(process_manager_new)
+
+        return data_manager_new
 
     def show(self):
 
@@ -232,10 +258,9 @@ class PlotAnalyze:
         self.data_factory_manager = fm.FactoryManager(dm.DataManager, data_manager)
         self.process_factory_manager = fm.FactoryManager(process.ProcessManager, process)
         self.view_factory_manager = fm.FactoryManager(view.Viewset, view)
-        self.plot_factory_manager = fm.FactoryManager(plotmanager.PlotManager, plotmanager)
+        self.plot_factory_manager = fm.FactoryManager(plot_manager.PlotManager, plot_manager)
 
         return
-
 
 def main(argv):
     # Default argvs
@@ -289,7 +314,6 @@ def main(argv):
     logging.info("Show plots...")
 
     plotanalyze.show()
-
 
 if __name__ == "__main__":
     main(sys.argv[1:])
