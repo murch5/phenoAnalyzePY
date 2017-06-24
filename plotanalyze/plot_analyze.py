@@ -8,10 +8,12 @@ import getopt as getopt
 import glob as glob
 import os as os
 import sys as sys
+import io as io
+import traceback as traceback
 
 import xml.etree.ElementTree as et
 import matplotlib.pyplot as plt
-import io_util.xml_parse as xml_parser
+
 
 # Import version number from __init__.py
 
@@ -29,6 +31,7 @@ import plotmanager as plot_manager
 import process as process
 import plotanalyze.view as view
 import factory_manager as fm
+import io_util.xml_parse as xml_parser
 
 # Set-up logging
 loggerconfig_stream = open("logger.ini", "r")
@@ -52,6 +55,19 @@ class PlotAnalyze:
         if os.path.isfile(input):
             extension = os.path.splitext(input)[1]
             if extension == ".txt" or extension == "":
+                self.data_filelist = []
+                with io.open(os.path.abspath(input),"r") as input_list:
+                    try:
+                       for data_source in input_list:
+                           if os.path.isfile(data_source):
+                            self.data_filelist.append(data_source)
+                           elif os.path.exists(data_source):
+                            new_data_files = glob.glob(data_source + "/*.*")
+                            self.data_filelist.extend(new_data_files)
+                    except AttributeError:
+                        traceback.print_exc()
+                        logging.error("Data file list " + input + " failed to load")
+
                 logging.info("Input file list detected")
                 logging.debug("--- File extension: " + str(extension))
                 # TODO
@@ -144,7 +160,10 @@ class PlotAnalyze:
 
         for i, viewset in enumerate(view_root.iter("viewset")):
             new_viewset = self.view_factory_manager.add_factory_stack()
-
+            t = xml_parser.xml_to_json(viewset)
+            r = xml_parser.dict_to_json({"d":1,"e":{"a":[2,3,2],"b":5}})
+            logging.debug(r)
+            r = xml_parser.json_to_xml(t)
             logging.debug(
                 "--- Adding new viewset: " + str(viewset.findtext("title")) + " - " + str(i + 1) + " of " + str(
                     len(view_root.findall("viewset"))))
