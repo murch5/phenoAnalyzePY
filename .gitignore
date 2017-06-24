@@ -2,9 +2,6 @@
 *.png
 *.csv
 *.viewSet
-**/input/*
-**/output/*
-**/process/*
 .idea*
 *.mp4
 *.pyc
