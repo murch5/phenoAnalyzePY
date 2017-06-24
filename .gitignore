@@ -2,9 +2,9 @@
 *.png
 *.csv
 *.viewSet
-/plot_analyze/input*
-/plot_analyze/output*
-/plot_analyze/process/*
+plot_analyze/input/
+plot_analyze/output/
+plot_analyze/process/
 .idea*
 *.mp4
 *.pyc
