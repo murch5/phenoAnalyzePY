@@ -1,5 +1,5 @@
 from distutils.core import setup
-from plotanalyze.__init__ import __version__ as version
+from plot_analyze.__init__ import __version__ as version
 
 setup(
     name='plotanalyze',

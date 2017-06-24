@@ -2,9 +2,9 @@
 *.png
 *.csv
 *.viewSet
-/plotanalyze/input*
-/plotanalyze/output*
-/plotanalyze/process/*
+/plot_analyze/input*
+/plot_analyze/output*
+/plot_analyze/process/*
 .idea*
 *.mp4
 *.pyc
@@ -14,3 +14,4 @@
 *.ini
 *.log
 *.txt
+*.tif

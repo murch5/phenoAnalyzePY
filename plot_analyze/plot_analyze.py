@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 # Import version number from __init__.py
 
-import plotanalyze.__init__ as version
+import plot_analyze.__init__ as version
 
 sys.path.insert(0, "C:/Users/Ryan/PycharmProjects/datatypesPY")
 sys.path.insert(1, "C:/Users/Ryan/PycharmProjects/plot_managerPY")
@@ -29,7 +29,7 @@ import data_manager.data_manager as dm
 import data_manager as data_manager
 import plotmanager as plot_manager
 import process as process
-import plotanalyze.view as view
+import plot_analyze.view as view
 import factory_manager as fm
 import io_util.xml_parse as xml_parser
 
