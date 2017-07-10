@@ -2,6 +2,7 @@
 import logging
 import logging.config
 import yaml
+import json
 
 # System imports
 import getopt as getopt
@@ -17,8 +18,9 @@ import matplotlib.pyplot as plt
 
 # Import version number from __init__.py
 
-import plot_analyze.__init__ as version
+import __init__ as version
 
+#sys.path.insert(5, "C:/Users/Ryan/PycharmProjects/plot_analyzePY")
 sys.path.insert(0, "C:/Users/Ryan/PycharmProjects/datatypesPY")
 sys.path.insert(1, "C:/Users/Ryan/PycharmProjects/plot_managerPY")
 sys.path.insert(2, "C:/Users/Ryan/PycharmProjects/processPY")
@@ -27,9 +29,9 @@ sys.path.insert(4, "C:/Users/Ryan/PycharmProjects/ioPY")
 
 import data_manager.data_manager as dm
 import data_manager as data_manager
-import plotmanager as plot_manager
+import plot_manager as plot_manager
 import process as process
-import plot_analyze.view as view
+import view as view
 import factory_manager as fm
 import io_util.xml_parse as xml_parser
 
@@ -160,10 +162,22 @@ class PlotAnalyze:
 
         for i, viewset in enumerate(view_root.iter("viewset")):
             new_viewset = self.view_factory_manager.add_factory_stack()
-            t = xml_parser.xml_to_json(viewset)
-            r = xml_parser.dict_to_json({"d":1,"e":{"a":[2,3,2],"b":5}})
+            t = xml_parser.xml_to_dict(viewset)
+            r = xml_parser.dict_to_json(t,child_levels=["viewset","view","subplot","data"])
+            logging.debug(t)
             logging.debug(r)
-            r = xml_parser.json_to_xml(t)
+
+            q = xml_parser.rename_child_nodes(r,level_keys=["viewset","view","subplot","data"])
+            print(q)
+            logging.debug(q)
+            z = xml_parser.dict_to_xml(q[0])
+
+            z.write("booya.xml")
+            print(et.tostring(z.getroot()))
+
+            with open('data.json ', 'w') as outfile:
+                json.dump(q, outfile)
+
             logging.debug(
                 "--- Adding new viewset: " + str(viewset.findtext("title")) + " - " + str(i + 1) + " of " + str(
                     len(view_root.findall("viewset"))))
@@ -196,9 +210,7 @@ class PlotAnalyze:
 
         plot_manager_new.setup_figure()
 
-        plot = view.find(".//plot")
-
-        self._create_subplot(plot,plot_manager_new)
+        self._create_subplot(view,plot_manager_new)
 
         plot_manager_new.push_all("grid_spec", plot_manager_new.get("grid_spec"))
         plot_manager_new.push_all("figure", plot_manager_new.get("figure"))
