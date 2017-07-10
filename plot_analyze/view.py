@@ -1,5 +1,5 @@
 
-import plotmanager.plot_manager as pltmanager
+import plot_manager.plot_manager as pltmanager
 import io_util.xml_parse as xml_parser
 import factory_manager as fm
 
