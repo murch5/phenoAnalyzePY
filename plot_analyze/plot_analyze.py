@@ -162,21 +162,6 @@ class PlotAnalyze:
 
         for i, viewset in enumerate(view_root.iter("viewset")):
             new_viewset = self.view_factory_manager.add_factory_stack()
-            t = xml_parser.xml_to_dict(viewset)
-            r = xml_parser.dict_to_json(t,child_levels=["viewset","view","subplot","data"])
-            logging.debug(t)
-            logging.debug(r)
-
-            q = xml_parser.rename_child_nodes(r,level_keys=["viewset","view","subplot","data"])
-            print(q)
-            logging.debug(q)
-            z = xml_parser.dict_to_xml(q[0])
-
-            z.write("booya.xml")
-            print(et.tostring(z.getroot()))
-
-            with open('data.json ', 'w') as outfile:
-                json.dump(q, outfile)
 
             logging.debug(
                 "--- Adding new viewset: " + str(viewset.findtext("title")) + " - " + str(i + 1) + " of " + str(
