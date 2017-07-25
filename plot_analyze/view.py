@@ -10,7 +10,7 @@ class View(fm.FactoryObject):
 
     def initialize(self):
 
-        self.title = ""
+        #self.title = ""
         self.view_style_XML = None
         self.viewset_style_XML = None
         self.figure = None
@@ -18,6 +18,13 @@ class View(fm.FactoryObject):
 
     def show(self):
         self.plot_manager.call_all("draw")
+
+    def save(self):
+        figure_list = self.plot_manager.get_all("figure")
+
+        for i, fig in enumerate(figure_list):
+            fig.savefig("./output/" + self.get("title") + "_" + '{:d}'.format(i) + ".png", bbox_inches="tight", pad_inches=0, transparent=True)
+        pass
 
     def do(self, data):
         self.show()
@@ -33,5 +40,8 @@ class Viewset(fm.FactoryStack):
 
     def show_views(self):
         self.call_all("show")
+
+    def save_views(self):
+        self.call_all("save")
 
 
