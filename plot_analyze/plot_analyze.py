@@ -174,7 +174,7 @@ class PlotAnalyze:
     def _create_view(self, viewset, view_manager):
 
         for j, view in enumerate(viewset.iter("view")):
-            view_new = view_manager.add("View", {"view_XML": view})
+            view_new = view_manager.add("View", {"view_XML": view, "title": str(view.findtext("title"))})
 
             logging.debug(
                 "------ Adding new view: " + str(view.findtext("title")) + " - " + str(j + 1) + " of " + str(
@@ -254,7 +254,7 @@ class PlotAnalyze:
     def show(self):
 
         self.view_factory_manager.call_all("show_views")
-
+        self.view_factory_manager.call_all("save_views")
         plt.show()
 
         return
