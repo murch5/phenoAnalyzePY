@@ -12,3 +12,5 @@
 *.log
 *.txt
 *.tif
+./views_sep/*
+*.json
