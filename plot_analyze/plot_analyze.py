@@ -30,6 +30,7 @@ sys.path.insert(4, "C:/Users/Ryan/PycharmProjects/ioPY")
 import data_manager.data_manager as dm
 import data_manager as data_manager
 import plot_manager as plot_manager
+import plot_manager.annotation_manager as annotation
 import process as process
 import view as view
 import factory_manager as fm
@@ -200,6 +201,7 @@ class PlotAnalyze:
         plot_manager_new.push_all("grid_spec", plot_manager_new.get("grid_spec"))
         plot_manager_new.push_all("figure", plot_manager_new.get("figure"))
         plot_manager_new.call_all("setup_subplot")
+        plot_manager_new.call_all("initialize_annotation")
         plot_manager_new.call_all("set_data")
 
 
@@ -218,6 +220,8 @@ class PlotAnalyze:
 
             data_manager_new = self._create_data_manager(subplot.find("data"))
 
+            annotation_manager_new = self._create_annotation_manager(subplot.find("annotate"))
+
             plot_settings = xml_parser.xml_to_dict(subplot.find("plot_style")).get("plot_style")
 
             subplot_settings.update(plot_settings)
@@ -225,6 +229,8 @@ class PlotAnalyze:
             data_manager_new.call_all("process_data")
             subplot_new = plot_manager.add(subplot_settings.get("plot_type"), subplot_settings)
             subplot_new.set("data_manager", data_manager_new)
+            subplot_new.set("annotation_manager", annotation_manager_new)
+
 
         pass
 
@@ -251,6 +257,18 @@ class PlotAnalyze:
 
         return data_manager_new
 
+    def _create_annotation_manager(self,annotations):
+
+        annotation_new = self.annotation_factory_manager.add_factory_stack()
+
+        for annotation in annotations:
+            annotation_dict = xml_parser.xml_to_dict(annotation)
+
+            for d in annotation_dict.keys():
+                annotation_new.add(d,annotation_dict.get(d))
+
+        return annotation_new
+
     def show(self):
 
         self.view_factory_manager.call_all("show_views")
@@ -275,6 +293,7 @@ class PlotAnalyze:
         self.process_factory_manager = fm.FactoryManager(process.ProcessManager, process)
         self.view_factory_manager = fm.FactoryManager(view.Viewset, view)
         self.plot_factory_manager = fm.FactoryManager(plot_manager.PlotManager, plot_manager)
+        self.annotation_factory_manager = fm.FactoryManager(plot_manager.AnnotationManager, plot_manager)
 
         return
 
