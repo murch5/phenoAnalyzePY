@@ -18,6 +18,7 @@ class View(fm.FactoryObject):
 
     def show(self):
         self.plot_manager.call_all("draw")
+        self.plot_manager.call_all("annotate")
 
     def save(self):
         figure_list = self.plot_manager.get_all("figure")
