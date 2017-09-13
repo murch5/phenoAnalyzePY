@@ -248,10 +248,13 @@ class PlotAnalyze:
             process_stack = data.find("processing")
             process_manager_new = self.process_factory_manager.add_factory_stack()
 
-            for process in process_stack:
-                process_step_dict = xml_parser.xml_to_dict(process)
-                for d in process_step_dict.keys():
-                    process_manager_new.add(d, process_step_dict.get(d))
+
+            process_manager_new.populate_from_xml(process_stack)
+
+            #for process in process_stack:
+               # process_step_dict = xml_parser.xml_to_dict(process)
+               # for d in process_step_dict.keys():
+                    #process_manager_new.add(d, process_step_dict.get(d))
 
             data_manager_new.get_obj_list()[i].set_process_manager(process_manager_new)
 
