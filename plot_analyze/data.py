@@ -34,12 +34,17 @@ class DataCollection():
 
         self.data_handler.populate_from_xml(self.data_XML.iterfind(".//dataset"), nested_type="./type")
 
-
         logger.debug("Lazy loading data structures from XML...")
         self.data_handler.call_all("load")
 
         logger.debug("Build processing stack...")
         self.data_handler.call_all("build_process_stack")
+
+        ## Design function within data_hanlder to organize processing steps into directed graph
+        ## Then evaluate steps in directed graph based on topological sorting
+
+        logger.debug("Assign processing stack to graph nodes...")
+
 
         logger.debug("Build processing stack...")
         self.data_handler.call_all("process_data")
