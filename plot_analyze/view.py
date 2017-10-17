@@ -94,3 +94,4 @@ class ViewCollection():
 
         for view_set in self.view_set_list:
             view_set.show_views()
+            view_set.save_views()
